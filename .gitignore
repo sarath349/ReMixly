@@ -1,0 +1,5 @@
+node_modules/
+dist/
+bin/yt-dlp
+.DS_Store
+.env
