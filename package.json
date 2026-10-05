@@ -8,6 +8,7 @@
     "dev:chrome": "IG_COOKIES_BROWSER=chrome vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "vite preview --host 0.0.0.0 --port ${PORT:-5190}",
     "setup": "node scripts/get-yt-dlp.mjs"
   },
   "dependencies": {

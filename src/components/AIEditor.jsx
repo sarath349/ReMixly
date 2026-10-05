@@ -1,5 +1,15 @@
-import { useState } from 'react';
-import { OUTPUT_MIME, PROVIDERS, buildSystemPrompt, listModels, loadSettings, requestPlan, saveSettings } from '../lib/ai.js';
+import { useEffect, useState } from 'react';
+import {
+  OUTPUT_MIME,
+  PROVIDERS,
+  buildSystemPrompt,
+  getServerConfig,
+  listModels,
+  loadSettings,
+  requestPlan,
+  saveSettings,
+  usesServerKey,
+} from '../lib/ai.js';
 import { probeMedia, runFFmpeg } from '../lib/ffmpeg.js';
 import { baseName, fileExt, fmtTime, loadMedia } from '../lib/media.js';
 import { FilePicker, JobStatus, useJob } from './common.jsx';
@@ -18,7 +28,7 @@ const EXAMPLES = [
 
 let inputCounter = 0;
 
-function Settings({ settings, onChange }) {
+function Settings({ settings, onChange, serverKey }) {
   const [models, setModels] = useState([]);
   const [status, setStatus] = useState('');
   const preset = PROVIDERS[settings.provider];
@@ -62,7 +72,9 @@ function Settings({ settings, onChange }) {
         <input
           type="password"
           value={settings.apiKey}
-          placeholder={settings.provider === 'ollama' ? 'Not needed' : 'Paste your API key'}
+          placeholder={
+            settings.provider === 'ollama' ? 'Not needed' : serverKey ? 'Using key from .env' : 'Paste your API key'
+          }
           onChange={(e) => onChange({ ...settings, apiKey: e.target.value.trim() })}
         />
       </label>
@@ -93,6 +105,7 @@ function Settings({ settings, onChange }) {
 export default function AIEditor() {
   const [settings, setSettingsState] = useState(loadSettings);
   const [showSettings, setShowSettings] = useState(() => !loadSettings().apiKey);
+  const [serverKeyBaseUrl, setServerKeyBaseUrl] = useState(null);
   const [files, setFiles] = useState([]);
   const [analyzing, setAnalyzing] = useState(0);
   const [prompt, setPrompt] = useState('');
@@ -103,6 +116,17 @@ export default function AIEditor() {
     setSettingsState(s);
     saveSettings(s);
   };
+
+  useEffect(() => {
+    getServerConfig()
+      .then(({ serverKeyBaseUrl: url }) => {
+        setServerKeyBaseUrl(url);
+        if (usesServerKey(loadSettings(), url)) setShowSettings(false);
+      })
+      .catch(() => {});
+  }, []);
+
+  const serverKey = usesServerKey(settings, serverKeyBaseUrl);
 
   const addFiles = async (list) => {
     setAnalyzing((n) => n + list.length);
@@ -124,7 +148,7 @@ export default function AIEditor() {
       return prev.filter((x) => x.id !== id);
     });
 
-  const needsKey = settings.provider !== 'ollama' && settings.provider !== 'custom' && !settings.apiKey;
+  const needsKey = settings.provider !== 'ollama' && settings.provider !== 'custom' && !settings.apiKey && !serverKey;
   const addStep = (step) => setSteps((prev) => [...prev, step]);
 
   const runPrompt = () =>
@@ -186,7 +210,7 @@ export default function AIEditor() {
             {showSettings ? 'Hide' : 'Change'}
           </button>
         </div>
-        {showSettings && <Settings settings={settings} onChange={setSettings} />}
+        {showSettings && <Settings settings={settings} onChange={setSettings} serverKey={serverKey} />}
       </section>
 
       <section className="card">

@@ -1,8 +1,12 @@
-const ENV = {
-  baseUrl: process.env.AI_BASE_URL,
-  apiKey: process.env.AI_API_KEY,
-  model: process.env.AI_MODEL,
-};
+const trimUrl = (url) => (url || '').replace(/\/+$/, '');
+
+function env() {
+  return {
+    baseUrl: trimUrl(process.env.AI_BASE_URL),
+    apiKey: process.env.AI_API_KEY || '',
+    model: process.env.AI_MODEL,
+  };
+}
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -23,9 +27,12 @@ function readJson(req) {
 }
 
 function resolveSettings(settings = {}) {
-  const baseUrl = (settings.baseUrl || ENV.baseUrl || '').replace(/\/+$/, '');
+  const ENV = env();
+  const baseUrl = trimUrl(settings.baseUrl || ENV.baseUrl);
   if (!baseUrl) throw Object.assign(new Error('Set the AI provider in AI settings first.'), { status: 400 });
-  return { baseUrl, apiKey: settings.apiKey || ENV.apiKey || '', model: settings.model || ENV.model };
+  // Never forward the .env key to a provider other than the one it was configured for.
+  const envKey = !ENV.baseUrl || ENV.baseUrl === baseUrl ? ENV.apiKey : '';
+  return { baseUrl, apiKey: settings.apiKey || envKey, model: settings.model || ENV.model };
 }
 
 async function callProvider(url, apiKey, init = {}) {
@@ -76,7 +83,12 @@ async function listModels({ settings }) {
   return { models };
 }
 
-const ROUTES = { '/api/ai/chat': chat, '/api/ai/models': listModels };
+async function config() {
+  const { baseUrl, apiKey } = env();
+  return { serverKeyBaseUrl: apiKey ? baseUrl || '*' : null };
+}
+
+const ROUTES = { '/api/ai/chat': chat, '/api/ai/models': listModels, '/api/ai/config': config };
 
 async function handler(req, res, next) {
   const route = ROUTES[req.url.split('?')[0]];

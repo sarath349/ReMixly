@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: remixly
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run setup && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: AI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: AI_MODEL
+        value: gemini-2.5-flash
+      - key: AI_API_KEY
+        sync: false

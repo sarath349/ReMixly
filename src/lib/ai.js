@@ -60,6 +60,12 @@ async function post(path, body) {
 
 export const listModels = (settings) => post('/api/ai/models', { settings }).then((d) => d.models);
 
+export const getServerConfig = () => post('/api/ai/config', {});
+
+export const usesServerKey = (settings, serverKeyBaseUrl) =>
+  !!serverKeyBaseUrl &&
+  (serverKeyBaseUrl === '*' || serverKeyBaseUrl === (settings.baseUrl || '').replace(/\/+$/, ''));
+
 const OUTPUT_RE = /^output\.(mp4|mov|webm|mkv|gif|mp3|wav|m4a|aac|ogg|flac)$/;
 
 export function buildSystemPrompt(files) {
